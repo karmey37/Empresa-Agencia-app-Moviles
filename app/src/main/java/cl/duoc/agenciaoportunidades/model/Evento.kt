@@ -13,14 +13,21 @@ import androidx.room3.PrimaryKey
             parentColumns = ["id"],
             childColumns = ["organizacionId"],
             onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = Comuna::class,
+            parentColumns = ["id"],
+            childColumns = ["comunaId"],
+            onDelete = ForeignKey.RESTRICT
         )
     ],
-    indices = [Index("organizacionId")]
+    indices = [Index("organizacionId"), Index("comunaId")]
 )
 data class Evento(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val organizacionId: Int,
+    val comunaId: Int,
     val nombre: String,
     val tipo: TipoEvento = TipoEvento.EVENTO_CORPORATIVO,
     val descripcion: String = "",
@@ -28,8 +35,6 @@ data class Evento(
     val fechaTermino: Long,
     val horario: String = "",
     val ubicacion: String = "",
-    val comuna: String = "",
-    val region: String = "",
     val publicoEsperado: String = "",
     val publicoObjetivo: String = "",
     val asistentesEstimados: Int = 0,

@@ -1,7 +1,7 @@
 package cl.duoc.agenciaoportunidades.model
 
 enum class PerfilUsuario {
-    EJECUTIVO, SUPERVISOR, MARKETING
+    EJECUTIVO, SUPERVISOR
 }
 
 enum class TipoOrganizacion {

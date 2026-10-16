@@ -29,7 +29,6 @@ data class Oportunidad(
     val eventoId: Int,
     val responsableId: Int? = null,
     val nombre: String,
-    val tipo: TipoEvento = TipoEvento.EVENTO_CORPORATIVO,
     val descripcion: String = "",
     val fuente: String = "",
     val fechaDeteccion: Long = System.currentTimeMillis(),

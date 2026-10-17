@@ -1,58 +1,89 @@
 package cl.duoc.agenciaoportunidades.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+private val EsquemaClaro = lightColorScheme(
+    primary = SolBlue,
+    onPrimary = SolBase3,
+    primaryContainer = SolBlueContenedorClaro,
+    onPrimaryContainer = SolBase02,
+    secondary = SolCyan,
+    onSecondary = SolBase03,
+    secondaryContainer = SolCyanContenedorClaro,
+    onSecondaryContainer = SolBase02,
+    tertiary = SolViolet,
+    onTertiary = SolBase3,
+    tertiaryContainer = SolVioletContenedorClaro,
+    onTertiaryContainer = SolBase02,
+    error = SolRed,
+    onError = SolBase3,
+    errorContainer = SolRedContenedorClaro,
+    onErrorContainer = SolBase02,
+    background = SolBase3,
+    onBackground = SolBase02,
+    surface = SolBase3,
+    onSurface = SolBase02,
+    surfaceVariant = SolBase2,
+    onSurfaceVariant = SolBase01,
+    outline = SolBase1,
+    outlineVariant = SolBase2,
+    surfaceContainerLowest = SolBase3,
+    surfaceContainerLow = SolBase2,
+    surfaceContainer = SolBase2,
+    surfaceContainerHigh = SolBase2,
+    surfaceContainerHighest = SolBase2
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val EsquemaOscuro = darkColorScheme(
+    primary = SolBlue,
+    onPrimary = SolBase03,
+    primaryContainer = SolBlueContenedorOscuro,
+    onPrimaryContainer = SolBase2,
+    secondary = SolCyan,
+    onSecondary = SolBase03,
+    secondaryContainer = SolCyanContenedorOscuro,
+    onSecondaryContainer = SolBase2,
+    tertiary = SolViolet,
+    onTertiary = SolBase3,
+    tertiaryContainer = SolVioletContenedorOscuro,
+    onTertiaryContainer = SolBase2,
+    error = SolRed,
+    onError = SolBase3,
+    errorContainer = SolRedContenedorOscuro,
+    onErrorContainer = SolBase2,
+    background = SolBase03,
+    onBackground = SolBase1,
+    surface = SolBase03,
+    onSurface = SolBase1,
+    surfaceVariant = SolBase02,
+    onSurfaceVariant = SolBase0,
+    outline = SolBase01,
+    outlineVariant = SolBase02,
+    surfaceContainerLowest = SolBase03,
+    surfaceContainerLow = SolBase02,
+    surfaceContainer = SolBase02,
+    surfaceContainerHigh = SolBase02,
+    surfaceContainerHighest = SolBase02
 )
 
 @Composable
 fun AgenciaOportunidadesTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+    val colorScheme = if (darkTheme) EsquemaOscuro else EsquemaClaro
+    val coloresSemanticos = if (darkTheme) SemanticosOscuro else SemanticosClaro
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    CompositionLocalProvider(LocalColoresSemanticos provides coloresSemanticos) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
     }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
 }

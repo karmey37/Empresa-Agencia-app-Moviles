@@ -1,21 +1,27 @@
 package cl.duoc.agenciaoportunidades.ui.detalle
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cl.duoc.agenciaoportunidades.data.AgenciaRepository
 import cl.duoc.agenciaoportunidades.data.AppDatabase
 import cl.duoc.agenciaoportunidades.model.EstadoOportunidad
+import cl.duoc.agenciaoportunidades.model.Evidencia
 import cl.duoc.agenciaoportunidades.model.Usuario
 import cl.duoc.agenciaoportunidades.util.estadosPermitidos
 import cl.duoc.agenciaoportunidades.util.etiqueta
 import cl.duoc.agenciaoportunidades.util.puedeAsignarResponsable
+import cl.duoc.agenciaoportunidades.util.puedeEditarOportunidad
 import cl.duoc.agenciaoportunidades.util.puedeVerOportunidad
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.IOException
 
 class DetalleOportunidadViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -57,11 +63,18 @@ class DetalleOportunidadViewModel(application: Application) : AndroidViewModel(a
             }
         }
         viewModelScope.launch {
+            repository.obtenerEvidencias(id).collect { lista ->
+                _uiState.update { it.copy(evidencias = lista) }
+            }
+        }
+        viewModelScope.launch {
             repository.obtenerEjecutivos().collect { lista ->
                 _uiState.update { it.copy(ejecutivos = lista) }
             }
         }
     }
+
+    // ================= Estado y responsable =================
 
     fun cambiarEstado(nuevoEstado: EstadoOportunidad, observacion: String) {
         val usuarioActual = usuario ?: return
@@ -71,11 +84,11 @@ class DetalleOportunidadViewModel(application: Application) : AndroidViewModel(a
             try {
                 val oportunidad = repository.obtenerOportunidad(id)
                 if (oportunidad == null) {
-                    mostrarMensaje("No se encontró la oportunidad")
+                    avisar("No se encontró la oportunidad")
                     return@launch
                 }
                 if (nuevoEstado !in estadosPermitidos(usuarioActual, oportunidad.estado)) {
-                    mostrarMensaje("No tienes permiso para realizar este cambio de estado")
+                    avisar("No tienes permiso para realizar este cambio de estado")
                     return@launch
                 }
                 repository.cambiarEstado(
@@ -84,9 +97,9 @@ class DetalleOportunidadViewModel(application: Application) : AndroidViewModel(a
                     usuarioId = usuarioActual.id,
                     observaciones = observacion.trim()
                 )
-                mostrarMensaje("Estado actualizado a \"${nuevoEstado.etiqueta()}\"")
+                avisar("Estado actualizado a \"${nuevoEstado.etiqueta()}\"")
             } catch (e: Exception) {
-                mostrarMensaje("No se pudo actualizar el estado. Inténtalo nuevamente")
+                avisar("No se pudo actualizar el estado. Inténtalo nuevamente")
             }
         }
     }
@@ -97,7 +110,7 @@ class DetalleOportunidadViewModel(application: Application) : AndroidViewModel(a
         val id = oportunidadId ?: return
 
         if (!puedeAsignarResponsable(usuarioActual)) {
-            mostrarMensaje("Solo el supervisor puede asignar responsables")
+            avisar("Solo el supervisor puede asignar responsables")
             return
         }
 
@@ -105,25 +118,119 @@ class DetalleOportunidadViewModel(application: Application) : AndroidViewModel(a
             try {
                 val oportunidad = repository.obtenerOportunidad(id)
                 if (oportunidad == null) {
-                    mostrarMensaje("No se encontró la oportunidad")
+                    avisar("No se encontró la oportunidad")
                     return@launch
                 }
                 repository.asignarResponsable(oportunidad, responsableId)
-                mostrarMensaje(
+                avisar(
                     if (responsableId == null) "La oportunidad quedó sin asignar"
                     else "Responsable asignado correctamente"
                 )
             } catch (e: Exception) {
-                mostrarMensaje("No se pudo asignar el responsable. Inténtalo nuevamente")
+                avisar("No se pudo asignar el responsable. Inténtalo nuevamente")
             }
         }
+    }
+
+    // ================= Evidencias fotográficas =================
+
+    // Crea (vacío) el archivo donde la cámara va a guardar la foto, dentro de la carpeta privada de la app
+    fun crearArchivoEvidencia(): File {
+        val carpeta = File(getApplication<Application>().filesDir, "evidencias")
+        if (!carpeta.exists()) carpeta.mkdirs()
+        return File(carpeta, "evidencia_${System.currentTimeMillis()}.jpg")
+    }
+
+    // La cámara terminó bien: la foto queda asociada a la oportunidad
+    fun registrarEvidencia(ruta: String) {
+        val id = oportunidadId ?: return
+        if (!puedeModificar()) {
+            File(ruta).delete()
+            avisar("No tienes permiso para agregar evidencias a esta oportunidad")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val archivo = File(ruta)
+                if (!archivo.exists() || archivo.length() == 0L) {
+                    archivo.delete()
+                    avisar("No se pudo guardar la fotografía")
+                    return@launch
+                }
+                repository.guardarEvidencia(Evidencia(oportunidadId = id, rutaArchivo = ruta))
+                avisar("Fotografía guardada correctamente")
+            } catch (e: Exception) {
+                File(ruta).delete()
+                avisar("No se pudo guardar la fotografía. Inténtalo nuevamente")
+            }
+        }
+    }
+
+    // El usuario cerró la cámara sin tomar la foto: se borra el archivo vacío
+    fun cancelarCaptura(ruta: String?) {
+        ruta?.let { File(it).delete() }
+        avisar("Captura cancelada")
+    }
+
+    // Copia una imagen elegida de la galería a la carpeta de la app
+    fun importarDesdeGaleria(uri: Uri) {
+        val id = oportunidadId ?: return
+        if (!puedeModificar()) {
+            avisar("No tienes permiso para agregar evidencias a esta oportunidad")
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val destino = crearArchivoEvidencia()
+            try {
+                val entrada = getApplication<Application>().contentResolver.openInputStream(uri)
+                    ?: throw IOException("No se pudo leer la imagen")
+                entrada.use { origen ->
+                    destino.outputStream().use { salida -> origen.copyTo(salida) }
+                }
+                repository.guardarEvidencia(
+                    Evidencia(oportunidadId = id, rutaArchivo = destino.absolutePath)
+                )
+                avisar("Fotografía agregada correctamente")
+            } catch (e: Exception) {
+                destino.delete()
+                avisar("No se pudo importar la imagen. Inténtalo nuevamente")
+            }
+        }
+    }
+
+    fun eliminarEvidencia(evidencia: Evidencia) {
+        if (!puedeModificar()) {
+            avisar("No tienes permiso para eliminar evidencias de esta oportunidad")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                repository.eliminarEvidencia(evidencia)
+                File(evidencia.rutaArchivo).delete()
+                avisar("Fotografía eliminada")
+            } catch (e: Exception) {
+                avisar("No se pudo eliminar la fotografía")
+            }
+        }
+    }
+
+    // ================= Mensajes =================
+
+    fun avisar(texto: String) {
+        _uiState.update { it.copy(mensaje = texto) }
     }
 
     fun consumirMensaje() {
         _uiState.update { it.copy(mensaje = null) }
     }
 
-    private fun mostrarMensaje(texto: String) {
-        _uiState.update { it.copy(mensaje = texto) }
+    // Solo el supervisor, o el responsable mientras la oportunidad siga abierta, puede modificarla
+    private fun puedeModificar(): Boolean {
+        val usuarioActual = usuario ?: return false
+        val detalle = _uiState.value.detalle ?: return false
+        return puedeEditarOportunidad(usuarioActual, detalle.estado)
     }
 }

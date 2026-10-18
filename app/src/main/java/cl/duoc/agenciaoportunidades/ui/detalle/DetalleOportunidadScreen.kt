@@ -1,5 +1,11 @@
 package cl.duoc.agenciaoportunidades.ui.detalle
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,15 +15,23 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -46,13 +60,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cl.duoc.agenciaoportunidades.model.EstadoOportunidad
+import cl.duoc.agenciaoportunidades.model.Evidencia
 import cl.duoc.agenciaoportunidades.model.HistorialEstado
 import cl.duoc.agenciaoportunidades.model.OportunidadDetalle
 import cl.duoc.agenciaoportunidades.model.SeguimientoDetalle
@@ -61,14 +80,18 @@ import cl.duoc.agenciaoportunidades.ui.components.Etiqueta
 import cl.duoc.agenciaoportunidades.ui.theme.coloresApp
 import cl.duoc.agenciaoportunidades.ui.theme.paraEstado
 import cl.duoc.agenciaoportunidades.ui.theme.paraPrioridad
+import cl.duoc.agenciaoportunidades.util.diasHasta
 import cl.duoc.agenciaoportunidades.util.estadosPermitidos
 import cl.duoc.agenciaoportunidades.util.etiqueta
 import cl.duoc.agenciaoportunidades.util.formatearFecha
 import cl.duoc.agenciaoportunidades.util.formatearFechaHora
 import cl.duoc.agenciaoportunidades.util.formatearPesos
+import cl.duoc.agenciaoportunidades.util.intentCalendarioEvento
+import cl.duoc.agenciaoportunidades.util.intentCalendarioSeguimiento
 import cl.duoc.agenciaoportunidades.util.puedeAsignarResponsable
-import androidx.compose.material.icons.filled.Edit
 import cl.duoc.agenciaoportunidades.util.puedeEditarOportunidad
+import coil3.compose.AsyncImage
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,9 +106,73 @@ fun DetalleOportunidadScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val detalle = uiState.detalle
+    val contexto = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var mostrarDialogoEstado by rememberSaveable { mutableStateOf(false) }
     var mostrarDialogoAsignar by rememberSaveable { mutableStateOf(false) }
+    var fotoSeleccionada by remember { mutableStateOf<Evidencia?>(null) }
+
+    // Ruta de la foto que la cámara está escribiendo (se guarda por si Android recrea la pantalla)
+    var rutaPendiente by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val puedeModificar = detalle != null && puedeEditarOportunidad(usuario, detalle.estado)
+
+    // ----- Cámara: la app de cámara del sistema guarda la foto en el archivo que le indicamos -----
+    val lanzadorCamara = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { exito ->
+        val ruta = rutaPendiente
+        rutaPendiente = null
+        if (exito && ruta != null) {
+            viewModel.registrarEvidencia(ruta)
+        } else {
+            // El usuario canceló: se borra el archivo vacío
+            viewModel.cancelarCaptura(ruta)
+        }
+    }
+
+    // ----- Galería: selector de fotos del sistema (no requiere permisos) -----
+    val lanzadorGaleria = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.importarDesdeGaleria(uri)
+        } else {
+            viewModel.avisar("No se seleccionó ninguna imagen")
+        }
+    }
+
+    val tomarFoto: () -> Unit = {
+        try {
+            val archivo = viewModel.crearArchivoEvidencia()
+            rutaPendiente = archivo.absolutePath
+            val uri = FileProvider.getUriForFile(
+                contexto,
+                "${contexto.packageName}.fileprovider",
+                archivo
+            )
+            lanzadorCamara.launch(uri)
+        } catch (e: Exception) {
+            rutaPendiente?.let { File(it).delete() }
+            rutaPendiente = null
+            viewModel.avisar("No se pudo abrir la cámara en este dispositivo")
+        }
+    }
+
+    val elegirFoto: () -> Unit = {
+        lanzadorGaleria.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        )
+    }
+
+    // ----- Calendario: abre la app de calendario con el evento ya preparado -----
+    val abrirCalendario: (Intent) -> Unit = { intent ->
+        try {
+            contexto.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            viewModel.avisar("No hay una aplicación de calendario instalada")
+        }
+    }
 
     LaunchedEffect(oportunidadId, usuario.id) {
         viewModel.cargar(oportunidadId, usuario)
@@ -113,7 +200,7 @@ fun DetalleOportunidadScreen(
                     }
                 },
                 actions = {
-                    if (detalle != null && puedeEditarOportunidad(usuario, detalle.estado)) {
+                    if (puedeModificar) {
                         IconButton(onClick = { onEditar(oportunidadId) }) {
                             Icon(
                                 imageVector = Icons.Filled.Edit,
@@ -165,12 +252,22 @@ fun DetalleOportunidadScreen(
                     detalle = detalle,
                     seguimientos = uiState.seguimientos,
                     historial = uiState.historialEstados,
+                    evidencias = uiState.evidencias,
                     puedeCambiarEstado = estadosPermitidos(usuario, detalle.estado).isNotEmpty(),
                     puedeAsignar = puedeAsignarResponsable(usuario),
+                    puedeRegistrar = puedeModificar,
                     onCambiarEstado = { mostrarDialogoEstado = true },
                     onAsignar = { mostrarDialogoAsignar = true },
-                    puedeRegistrar = puedeEditarOportunidad(usuario, detalle.estado),
                     onRegistrarSeguimiento = { onRegistrarSeguimiento(oportunidadId) },
+                    onAgendarEvento = { abrirCalendario(intentCalendarioEvento(detalle)) },
+                    onAgendarSeguimiento = { seguimiento ->
+                        seguimiento.fechaProximoSeguimiento?.let { fecha ->
+                            abrirCalendario(intentCalendarioSeguimiento(seguimiento, fecha))
+                        }
+                    },
+                    onTomarFoto = tomarFoto,
+                    onElegirFoto = elegirFoto,
+                    onVerFoto = { fotoSeleccionada = it },
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -200,6 +297,18 @@ fun DetalleOportunidadScreen(
             onCancelar = { mostrarDialogoAsignar = false }
         )
     }
+
+    fotoSeleccionada?.let { foto ->
+        DialogoFoto(
+            evidencia = foto,
+            puedeEliminar = puedeModificar,
+            onEliminar = {
+                fotoSeleccionada = null
+                viewModel.eliminarEvidencia(foto)
+            },
+            onCerrar = { fotoSeleccionada = null }
+        )
+    }
 }
 
 @Composable
@@ -207,12 +316,18 @@ private fun ContenidoDetalle(
     detalle: OportunidadDetalle,
     seguimientos: List<SeguimientoDetalle>,
     historial: List<HistorialEstado>,
+    evidencias: List<Evidencia>,
     puedeCambiarEstado: Boolean,
     puedeAsignar: Boolean,
+    puedeRegistrar: Boolean,
     onCambiarEstado: () -> Unit,
     onAsignar: () -> Unit,
-    puedeRegistrar: Boolean,
     onRegistrarSeguimiento: () -> Unit,
+    onAgendarEvento: () -> Unit,
+    onAgendarSeguimiento: (SeguimientoDetalle) -> Unit,
+    onTomarFoto: () -> Unit,
+    onElegirFoto: () -> Unit,
+    onVerFoto: (Evidencia) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -281,6 +396,7 @@ private fun ContenidoDetalle(
                 Text("Registrar seguimiento")
             }
         }
+
         // ----- Evento -----
         SeccionCard(titulo = "Evento") {
             FilaDato("Nombre del evento", detalle.eventoNombre)
@@ -302,6 +418,15 @@ private fun ContenidoDetalle(
             )
             FilaDato("Condiciones de participación", detalle.condiciones)
             FilaDato("Requisitos", detalle.requisitos)
+
+            OutlinedButton(
+                onClick = onAgendarEvento,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Filled.CalendarMonth, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Agregar evento al calendario")
+            }
         }
 
         // ----- Gestión comercial -----
@@ -317,6 +442,56 @@ private fun ContenidoDetalle(
             FilaDato("Observaciones", detalle.observaciones)
         }
 
+        // ----- Evidencias fotográficas -----
+        SeccionCard(titulo = "Evidencias fotográficas (${evidencias.size})") {
+            if (puedeRegistrar) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = onTomarFoto,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Tomar foto")
+                    }
+                    OutlinedButton(
+                        onClick = onElegirFoto,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Filled.PhotoLibrary, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Galería")
+                    }
+                }
+            }
+            if (evidencias.isEmpty()) {
+                Text(
+                    text = "Aún no hay fotografías de esta oportunidad.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Text(
+                    text = "Toca una foto para verla en grande.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(evidencias, key = { it.id }) { evidencia ->
+                        AsyncImage(
+                            model = File(evidencia.rutaArchivo),
+                            contentDescription = "Fotografía de evidencia",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(96.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onVerFoto(evidencia) }
+                        )
+                    }
+                }
+            }
+        }
+
         // ----- Seguimientos -----
         SeccionCard(titulo = "Seguimientos (${seguimientos.size})") {
             if (seguimientos.isEmpty()) {
@@ -328,7 +503,10 @@ private fun ContenidoDetalle(
             } else {
                 seguimientos.forEachIndexed { indice, seguimiento ->
                     if (indice > 0) HorizontalDivider()
-                    ItemSeguimiento(seguimiento)
+                    ItemSeguimiento(
+                        seguimiento = seguimiento,
+                        onAgendar = { onAgendarSeguimiento(seguimiento) }
+                    )
                 }
             }
         }
@@ -388,7 +566,10 @@ private fun FilaDato(etiqueta: String, valor: String) {
 }
 
 @Composable
-private fun ItemSeguimiento(seguimiento: SeguimientoDetalle) {
+private fun ItemSeguimiento(
+    seguimiento: SeguimientoDetalle,
+    onAgendar: () -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = "${seguimiento.tipoAccion.etiqueta()} · ${formatearFechaHora(seguimiento.fechaHora)}",
@@ -418,6 +599,15 @@ private fun ItemSeguimiento(seguimiento: SeguimientoDetalle) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+        // Solo se puede agendar un seguimiento que todavía no ha pasado
+        val fechaProxima = seguimiento.fechaProximoSeguimiento
+        if (fechaProxima != null && diasHasta(fechaProxima, System.currentTimeMillis()) >= 0) {
+            TextButton(onClick = onAgendar) {
+                Icon(Icons.Filled.CalendarMonth, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Agendar en el calendario")
+            }
         }
     }
 }
@@ -589,6 +779,42 @@ private fun DialogoAsignar(
         dismissButton = {
             TextButton(onClick = onCancelar) {
                 Text("Cancelar")
+            }
+        }
+    )
+}
+
+// Vista previa ampliada de una evidencia, con opción de eliminarla
+@Composable
+private fun DialogoFoto(
+    evidencia: Evidencia,
+    puedeEliminar: Boolean,
+    onEliminar: () -> Unit,
+    onCerrar: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCerrar,
+        title = { Text("Evidencia · ${formatearFechaHora(evidencia.fecha)}") },
+        text = {
+            AsyncImage(
+                model = File(evidencia.rutaArchivo),
+                contentDescription = "Fotografía ampliada",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onCerrar) {
+                Text("Cerrar")
+            }
+        },
+        dismissButton = {
+            if (puedeEliminar) {
+                TextButton(onClick = onEliminar) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
             }
         }
     )

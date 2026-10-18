@@ -15,18 +15,21 @@ import cl.duoc.agenciaoportunidades.model.Seguimiento
 import cl.duoc.agenciaoportunidades.model.SeguimientoDetalle
 import cl.duoc.agenciaoportunidades.model.Usuario
 import kotlinx.coroutines.flow.Flow
+import cl.duoc.agenciaoportunidades.model.OportunidadDetalle
+import cl.duoc.agenciaoportunidades.model.OrganizacionResumen
 
-// Repository: intermediario entre los ViewModel y los DAO
+
+//repository: intermediario entre los ViewModel y los DAO
 class AgenciaRepository(
     private val db: AppDatabase
 ) {
 
-    // ---------- Datos iniciales ----------
+    // ---------- datos iniciales ----------
     suspend fun sembrarDatosSiEstaVacia() {
         cargarDatosIniciales(db)
     }
 
-    // ---------- Usuarios ----------
+    // ---------- usuarios ----------
     suspend fun iniciarSesion(correo: String, password: String): Usuario? {
         return db.usuarioDao().iniciarSesion(correo.trim(), password)
     }
@@ -39,14 +42,25 @@ class AgenciaRepository(
         return db.usuarioDao().obtenerEjecutivos()
     }
 
-    // ---------- Comunas ----------
+    // ---------- comunas ----------
     fun obtenerComunas(): Flow<List<Comuna>> {
         return db.comunaDao().obtenerTodas()
     }
 
-    // ---------- Organizaciones ----------
+    // ---------- organizaciones ----------
     fun obtenerOrganizaciones(): Flow<List<Organizacion>> {
         return db.organizacionDao().obtenerTodas()
+    }
+    fun observarOrganizacion(id: Int): Flow<Organizacion?> {
+        return db.organizacionDao().observarPorId(id)
+    }
+
+    fun obtenerResumenesOrganizaciones(): Flow<List<OrganizacionResumen>> {
+        return db.organizacionDao().obtenerResumenes()
+    }
+
+    fun obtenerEventosPorOrganizacion(organizacionId: Int): Flow<List<Evento>> {
+        return db.eventoDao().obtenerPorOrganizacion(organizacionId)
     }
 
     suspend fun obtenerOrganizacion(id: Int): Organizacion? {
@@ -61,7 +75,7 @@ class AgenciaRepository(
         db.organizacionDao().actualizar(organizacion)
     }
 
-    // ---------- Contactos ----------
+    // ---------- contactos ----------
     fun obtenerContactos(): Flow<List<Contacto>> {
         return db.contactoDao().obtenerTodos()
     }
@@ -82,7 +96,7 @@ class AgenciaRepository(
         db.contactoDao().actualizar(contacto)
     }
 
-    // ---------- Eventos ----------
+    // ---------- eventos ----------
     fun obtenerEventos(): Flow<List<Evento>> {
         return db.eventoDao().obtenerTodos()
     }
@@ -99,7 +113,7 @@ class AgenciaRepository(
         db.eventoDao().actualizar(evento)
     }
 
-    // ---------- Oportunidades ----------
+    // ---------- oportunidades ----------
 
     // Supervisor ve todas; ejecutivo solo las que tiene asignadas
     fun obtenerResumenes(usuario: Usuario): Flow<List<OportunidadResumen>> {
@@ -114,6 +128,10 @@ class AgenciaRepository(
         return db.oportunidadDao().observarPorId(id)
     }
 
+    fun observarDetalleOportunidad(id: Int): Flow<OportunidadDetalle?> {
+        return db.oportunidadDao().observarDetalle(id)
+    }
+
     suspend fun obtenerOportunidad(id: Int): Oportunidad? {
         return db.oportunidadDao().obtenerPorId(id)
     }
@@ -122,7 +140,7 @@ class AgenciaRepository(
         return db.oportunidadDao().obtenerSinSeguimiento()
     }
 
-    // Crea la oportunidad y deja el primer registro en el historial de estados
+    //crea la oportunidad y deja el primer registro en el historial de estados
     suspend fun crearOportunidad(oportunidad: Oportunidad, usuarioId: Int): Int {
         val id = db.oportunidadDao().insertar(oportunidad).toInt()
         db.historialEstadoDao().insertar(
@@ -143,7 +161,7 @@ class AgenciaRepository(
         )
     }
 
-    // Cambia el estado y guarda el cambio en el historial
+    //cambia el estado y guarda el cambio en el historial
     suspend fun cambiarEstado(
         oportunidad: Oportunidad,
         nuevoEstado: EstadoOportunidad,
@@ -167,7 +185,7 @@ class AgenciaRepository(
         )
     }
 
-    // Asigna o reasigna el responsable (null = dejarla sin asignar)
+    //asigna o reasigna el responsable (null = dejarla sin asignar)
     suspend fun asignarResponsable(oportunidad: Oportunidad, responsableId: Int?) {
         db.oportunidadDao().actualizar(
             oportunidad.copy(
@@ -198,7 +216,7 @@ class AgenciaRepository(
         return db.seguimientoDao().insertar(seguimiento).toInt()
     }
 
-    // ---------- Evidencias (fotos) ----------
+    // --------- evidencias (fotos) ----------
     fun obtenerEvidencias(oportunidadId: Int): Flow<List<Evidencia>> {
         return db.evidenciaDao().obtenerPorOportunidad(oportunidadId)
     }
@@ -211,7 +229,7 @@ class AgenciaRepository(
         db.evidenciaDao().eliminar(evidencia)
     }
 
-    // ---------- Resultado de la activación ----------
+    // ---------- resultado de la activación ----------
     fun obtenerResultados(oportunidadId: Int): Flow<List<ResultadoActivacion>> {
         return db.resultadoActivacionDao().obtenerPorOportunidad(oportunidadId)
     }

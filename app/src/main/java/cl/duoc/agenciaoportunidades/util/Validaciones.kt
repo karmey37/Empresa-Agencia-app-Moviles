@@ -85,3 +85,31 @@ fun validarNumeroEntero(texto: String, campo: String, minimo: Int = 0): String? 
         else -> null
     }
 }
+
+private val REGEX_HORARIO = Regex("^([01][0-9]|2[0-3]):[0-5][0-9] - ([01][0-9]|2[0-3]):[0-5][0-9]$")
+
+fun validarHorario(horario: String): String? {
+    val valor = horario.trim()
+    return when {
+        valor.isEmpty() -> "El horario es obligatorio"
+        !REGEX_HORARIO.matches(valor) -> "Usa el formato HH:mm - HH:mm (ej: 10:00 - 16:00)"
+        else -> {
+            val partes = valor.split(" - ")
+            val inicio = partes[0].replace(":", "").toInt()
+            val fin = partes[1].replace(":", "").toInt()
+            if (fin <= inicio) "La hora de término debe ser posterior a la de inicio" else null
+        }
+    }
+}
+
+private val REGEX_SITIO_WEB = Regex("^https?://[A-Za-z0-9.-]+\\.[A-Za-z]{2,}(/.*)?$")
+
+// El sitio web es opcional, pero si se escribe debe ser una dirección valida
+fun validarSitioWebOpcional(sitio: String): String? {
+    val valor = sitio.trim()
+    return when {
+        valor.isEmpty() -> null
+        !REGEX_SITIO_WEB.matches(valor) -> "Usa una dirección válida (ej: https://www.ejemplo.cl)"
+        else -> null
+    }
+}

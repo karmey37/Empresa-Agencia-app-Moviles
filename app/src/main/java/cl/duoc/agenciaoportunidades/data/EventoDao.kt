@@ -21,4 +21,7 @@ interface EventoDao {
 
     @Query("SELECT * FROM eventos WHERE id = :id")
     suspend fun obtenerPorId(id: Int): Evento?
+
+    @Query("SELECT * FROM eventos WHERE organizacionId = :organizacionId ORDER BY fechaInicio DESC")
+    fun obtenerPorOrganizacion(organizacionId: Int): Flow<List<Evento>>
 }

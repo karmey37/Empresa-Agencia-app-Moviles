@@ -5,6 +5,7 @@ import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Update
 import cl.duoc.agenciaoportunidades.model.Oportunidad
+import cl.duoc.agenciaoportunidades.model.OportunidadDetalle
 import cl.duoc.agenciaoportunidades.model.OportunidadResumen
 import kotlinx.coroutines.flow.Flow
 
@@ -15,6 +16,29 @@ private const val SELECT_RESUMEN = """
            org.nombre AS organizacion,
            o.responsableId AS responsableId, u.nombre AS responsable,
            o.fechaActualizacion AS fechaActualizacion
+    FROM oportunidades o
+    INNER JOIN eventos e ON o.eventoId = e.id
+    INNER JOIN comunas c ON e.comunaId = c.id
+    INNER JOIN organizaciones org ON e.organizacionId = org.id
+    LEFT JOIN usuarios u ON o.responsableId = u.id
+"""
+
+private const val SELECT_DETALLE_OPORTUNIDAD = """
+    SELECT o.id AS id, o.nombre AS nombre, o.descripcion AS descripcion, o.fuente AS fuente,
+           o.fechaDeteccion AS fechaDeteccion, o.estado AS estado, o.prioridad AS prioridad,
+           o.potencialComercial AS potencialComercial, o.afinidadPublico AS afinidadPublico,
+           o.observaciones AS observaciones, o.fechaActualizacion AS fechaActualizacion,
+           o.responsableId AS responsableId, u.nombre AS responsable,
+           e.nombre AS eventoNombre, e.tipo AS tipoEvento,
+           e.fechaInicio AS fechaInicio, e.fechaTermino AS fechaTermino,
+           e.horario AS horario, e.ubicacion AS ubicacion,
+           c.nombre AS comuna, c.region AS region,
+           e.publicoEsperado AS publicoEsperado, e.publicoObjetivo AS publicoObjetivo,
+           e.asistentesEstimados AS asistentesEstimados,
+           e.condiciones AS condiciones, e.requisitos AS requisitos,
+           e.costoReferencial AS costoReferencial,
+           e.espaciosDisponibles AS espaciosDisponibles,
+           org.nombre AS organizacion, org.rubro AS rubro
     FROM oportunidades o
     INNER JOIN eventos e ON o.eventoId = e.id
     INNER JOIN comunas c ON e.comunaId = c.id
@@ -36,6 +60,10 @@ interface OportunidadDao {
 
     @Query("SELECT * FROM oportunidades WHERE id = :id")
     fun observarPorId(id: Int): Flow<Oportunidad?>
+
+    // Detalle completo (une oportunidad, evento, comuna, organización y responsable)
+    @Query(SELECT_DETALLE_OPORTUNIDAD + " WHERE o.id = :id")
+    fun observarDetalle(id: Int): Flow<OportunidadDetalle?>
 
     // Supervisor: todas las oportunidades
     @Query(SELECT_RESUMEN + " ORDER BY e.fechaInicio ASC")

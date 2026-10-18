@@ -3,6 +3,7 @@ package cl.duoc.agenciaoportunidades.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
@@ -21,14 +22,18 @@ private data class DestinoBarra(
 @Composable
 fun BarraInferior(
     rutaActual: String,
-    onNavegar: (String) -> Unit
+    onNavegar: (String) -> Unit,
+    esSupervisor: Boolean = false
 ) {
-    val destinos = listOf(
-        DestinoBarra(Rutas.DASHBOARD, "Inicio", Icons.Filled.Home),
-        DestinoBarra(Rutas.OPORTUNIDADES, "Oportunidades", Icons.AutoMirrored.Filled.FormatListBulleted),
-        DestinoBarra(Rutas.ORGANIZACIONES, "Organizaciones", Icons.Filled.Business),
-        DestinoBarra(Rutas.PERFIL, "Perfil", Icons.Filled.Person)
-    )
+    val destinos = buildList {
+        add(DestinoBarra(Rutas.DASHBOARD, "Inicio", Icons.Filled.Home))
+        add(DestinoBarra(Rutas.OPORTUNIDADES, "Oportunidades", Icons.AutoMirrored.Filled.FormatListBulleted))
+        add(DestinoBarra(Rutas.ORGANIZACIONES, "Organizaciones", Icons.Filled.Business))
+        if (esSupervisor) {
+            add(DestinoBarra(Rutas.EQUIPO, "Equipo", Icons.Filled.Groups))
+        }
+        add(DestinoBarra(Rutas.PERFIL, "Perfil", Icons.Filled.Person))
+    }
 
     NavigationBar {
         destinos.forEach { destino ->

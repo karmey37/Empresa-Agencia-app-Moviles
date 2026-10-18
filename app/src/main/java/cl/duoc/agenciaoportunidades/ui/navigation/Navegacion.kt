@@ -9,8 +9,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import cl.duoc.agenciaoportunidades.ui.contactos.FormularioContactoScreen
 import cl.duoc.agenciaoportunidades.ui.dashboard.DashboardScreen
 import cl.duoc.agenciaoportunidades.ui.detalle.DetalleOportunidadScreen
+import cl.duoc.agenciaoportunidades.ui.equipo.EquipoScreen
 import cl.duoc.agenciaoportunidades.ui.formulario.FormularioOportunidadScreen
 import cl.duoc.agenciaoportunidades.ui.login.LoginScreen
 import cl.duoc.agenciaoportunidades.ui.oportunidades.OportunidadesScreen
@@ -20,12 +22,14 @@ import cl.duoc.agenciaoportunidades.ui.organizaciones.OrganizacionesScreen
 import cl.duoc.agenciaoportunidades.ui.perfil.PerfilScreen
 import cl.duoc.agenciaoportunidades.ui.seguimiento.FormularioSeguimientoScreen
 import cl.duoc.agenciaoportunidades.ui.sesion.SesionViewModel
+import cl.duoc.agenciaoportunidades.util.esSupervisor
 
 object Rutas {
     const val LOGIN = "login"
     const val DASHBOARD = "dashboard"
     const val OPORTUNIDADES = "oportunidades"
     const val ORGANIZACIONES = "organizaciones"
+    const val EQUIPO = "equipo"
     const val PERFIL = "perfil"
     const val DETALLE = "detalle"
     const val SEGUIMIENTO = "seguimiento"
@@ -34,6 +38,8 @@ object Rutas {
     const val FORMULARIO_PATRON = "formulario?oportunidadId={oportunidadId}"
     const val FORMULARIO_ORGANIZACION = "formularioOrganizacion"
     const val FORMULARIO_ORGANIZACION_PATRON = "formularioOrganizacion?organizacionId={organizacionId}"
+    const val FORMULARIO_CONTACTO = "formularioContacto"
+    const val FORMULARIO_CONTACTO_PATRON = "formularioContacto/{organizacionId}?contactoId={contactoId}"
 
     fun detalle(oportunidadId: Int): String = "$DETALLE/$oportunidadId"
 
@@ -54,12 +60,22 @@ object Rutas {
             "$FORMULARIO_ORGANIZACION?organizacionId=$organizacionId"
         }
     }
+
+    // Siempre dentro de una organización. Sin contactoId: contacto nuevo. Con contactoId: editarlo.
+    fun formularioContacto(organizacionId: Int, contactoId: Int? = null): String {
+        return if (contactoId == null) {
+            "$FORMULARIO_CONTACTO/$organizacionId"
+        } else {
+            "$FORMULARIO_CONTACTO/$organizacionId?contactoId=$contactoId"
+        }
+    }
 }
 
 @Composable
 fun Navegacion(sesionViewModel: SesionViewModel = viewModel()) {
     val navController = rememberNavController()
     val usuario by sesionViewModel.usuario.collectAsStateWithLifecycle()
+    val supervisor = usuario?.let { esSupervisor(it) } ?: false
 
     // Cambio de pestaña en la barra inferior: no apila pantallas repetidas
     val irAPestana: (String) -> Unit = { ruta ->
@@ -90,7 +106,7 @@ fun Navegacion(sesionViewModel: SesionViewModel = viewModel()) {
                 DashboardScreen(
                     usuario = actual,
                     onAbrirOportunidad = { id -> navController.navigate(Rutas.detalle(id)) },
-                    bottomBar = { BarraInferior(Rutas.DASHBOARD, irAPestana) }
+                    bottomBar = { BarraInferior(Rutas.DASHBOARD, irAPestana, supervisor) }
                 )
             }
         }
@@ -101,7 +117,7 @@ fun Navegacion(sesionViewModel: SesionViewModel = viewModel()) {
                     usuario = actual,
                     onAbrirOportunidad = { id -> navController.navigate(Rutas.detalle(id)) },
                     onNuevaOportunidad = { navController.navigate(Rutas.formulario()) },
-                    bottomBar = { BarraInferior(Rutas.OPORTUNIDADES, irAPestana) }
+                    bottomBar = { BarraInferior(Rutas.OPORTUNIDADES, irAPestana, supervisor) }
                 )
             }
         }
@@ -109,8 +125,18 @@ fun Navegacion(sesionViewModel: SesionViewModel = viewModel()) {
             OrganizacionesScreen(
                 onAbrirOrganizacion = { id -> navController.navigate(Rutas.organizacion(id)) },
                 onNuevaOrganizacion = { navController.navigate(Rutas.formularioOrganizacion()) },
-                bottomBar = { BarraInferior(Rutas.ORGANIZACIONES, irAPestana) }
+                bottomBar = { BarraInferior(Rutas.ORGANIZACIONES, irAPestana, supervisor) }
             )
+        }
+        composable(Rutas.EQUIPO) {
+            val actual = usuario
+            if (actual != null) {
+                EquipoScreen(
+                    usuario = actual,
+                    onAbrirOportunidad = { id -> navController.navigate(Rutas.detalle(id)) },
+                    bottomBar = { BarraInferior(Rutas.EQUIPO, irAPestana, supervisor) }
+                )
+            }
         }
         composable(Rutas.PERFIL) {
             val actual = usuario
@@ -123,7 +149,7 @@ fun Navegacion(sesionViewModel: SesionViewModel = viewModel()) {
                             popUpTo(Rutas.DASHBOARD) { inclusive = true }
                         }
                     },
-                    bottomBar = { BarraInferior(Rutas.PERFIL, irAPestana) }
+                    bottomBar = { BarraInferior(Rutas.PERFIL, irAPestana, supervisor) }
                 )
             }
         }
@@ -200,6 +226,12 @@ fun Navegacion(sesionViewModel: SesionViewModel = viewModel()) {
                     onVolver = { navController.popBackStack() },
                     onEditar = { idEditar ->
                         navController.navigate(Rutas.formularioOrganizacion(idEditar))
+                    },
+                    onAgregarContacto = {
+                        navController.navigate(Rutas.formularioContacto(id))
+                    },
+                    onEditarContacto = { idContacto ->
+                        navController.navigate(Rutas.formularioContacto(id, idContacto))
                     }
                 )
             }
@@ -227,6 +259,27 @@ fun Navegacion(sesionViewModel: SesionViewModel = viewModel()) {
                     }
                 }
             )
+        }
+        composable(
+            route = Rutas.FORMULARIO_CONTACTO_PATRON,
+            arguments = listOf(
+                navArgument("organizacionId") { type = NavType.IntType },
+                navArgument("contactoId") {
+                    type = NavType.IntType
+                    defaultValue = -1
+                }
+            )
+        ) { entrada ->
+            val organizacionId = entrada.arguments?.getInt("organizacionId")
+            val contactoId = entrada.arguments?.getInt("contactoId") ?: -1
+            if (organizacionId != null) {
+                FormularioContactoScreen(
+                    organizacionId = organizacionId,
+                    contactoId = if (contactoId == -1) null else contactoId,
+                    onVolver = { navController.popBackStack() },
+                    onGuardado = { navController.popBackStack() }
+                )
+            }
         }
     }
 }

@@ -37,6 +37,8 @@ import cl.duoc.agenciaoportunidades.model.Contacto
 import cl.duoc.agenciaoportunidades.model.Evento
 import cl.duoc.agenciaoportunidades.util.etiqueta
 import cl.duoc.agenciaoportunidades.util.formatearFecha
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.OutlinedButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +46,8 @@ fun DetalleOrganizacionScreen(
     organizacionId: Int,
     onVolver: () -> Unit,
     onEditar: (Int) -> Unit,
+    onAgregarContacto: () -> Unit,
+    onEditarContacto: (Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: DetalleOrganizacionViewModel = viewModel()
 ) {
@@ -153,6 +157,12 @@ fun DetalleOrganizacionScreen(
                     }
 
                     SeccionOrganizacion(titulo = "Contactos (${uiState.contactos.size})") {
+                        OutlinedButton(
+                            onClick = onAgregarContacto,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Agregar contacto")
+                        }
                         if (uiState.contactos.isEmpty()) {
                             Text(
                                 text = "Esta organización aún no tiene contactos registrados.",
@@ -160,9 +170,17 @@ fun DetalleOrganizacionScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
+                            Text(
+                                text = "Toca un contacto para editarlo.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             uiState.contactos.forEachIndexed { indice, contacto ->
                                 if (indice > 0) HorizontalDivider()
-                                ItemContacto(contacto)
+                                ItemContacto(
+                                    contacto = contacto,
+                                    onClick = { onEditarContacto(contacto.id) }
+                                )
                             }
                         }
                     }
@@ -224,9 +242,12 @@ private fun FilaDatoOrganizacion(etiqueta: String, valor: String) {
 }
 
 @Composable
-private fun ItemContacto(contacto: Contacto) {
+private fun ItemContacto(contacto: Contacto, onClick: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(text = contacto.nombre, style = MaterialTheme.typography.titleSmall)

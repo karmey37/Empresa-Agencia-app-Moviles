@@ -58,7 +58,7 @@ Estado de avance (se actualiza durante el desarrollo):
 - [x] Alertas: eventos próximos, seguimientos pendientes y gestiones atrasadas
 - [x] Cámara para fotografiar eventos, con vista previa y asociación a la oportunidad
 - [x] Integración con el calendario del dispositivo
-- [ ] Tema Material 3 centralizado, colores semánticos y animaciones
+- [x] Tema Material 3 centralizado, colores semánticos y animaciones
 
 ## Arquitectura
 

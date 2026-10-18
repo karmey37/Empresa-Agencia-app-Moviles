@@ -50,7 +50,7 @@ import cl.duoc.agenciaoportunidades.util.esSupervisor
 import cl.duoc.agenciaoportunidades.util.etiqueta
 import cl.duoc.agenciaoportunidades.util.formatearFecha
 import cl.duoc.agenciaoportunidades.util.textoPlazo
-
+import androidx.compose.animation.Crossfade
 private const val MAXIMO_POR_ALERTA = 3
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,22 +73,25 @@ fun DashboardScreen(
         topBar = { TopAppBar(title = { Text("Inicio") }) },
         bottomBar = bottomBar
     ) { innerPadding ->
-        if (uiState.cargando) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+        // animation bn xula, (un crossfade)
+        Crossfade(targetState = uiState.cargando, label = "cargaDashboard") { estaCargando ->
+            if (estaCargando) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                ContenidoDashboard(
+                    usuario = usuario,
+                    uiState = uiState,
+                    onAbrirOportunidad = onAbrirOportunidad,
+                    modifier = Modifier.padding(innerPadding)
+                )
             }
-        } else {
-            ContenidoDashboard(
-                usuario = usuario,
-                uiState = uiState,
-                onAbrirOportunidad = onAbrirOportunidad,
-                modifier = Modifier.padding(innerPadding)
-            )
         }
     }
 }

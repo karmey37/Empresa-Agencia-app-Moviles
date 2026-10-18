@@ -46,18 +46,18 @@ Estado de avance (se actualiza durante el desarrollo):
 - [x] Modelo de datos relacional con Room (10 entidades)
 - [x] DAOs, base de datos y repositorio
 - [x] Datos de prueba ficticios que se cargan en la primera ejecución
-- [ ] Inicio y cierre de sesión con cuentas locales
-- [ ] Dashboard según el rol
-- [ ] Listado de oportunidades con búsqueda y filtros por estado y prioridad
-- [ ] Detalle de oportunidad
-- [ ] Formulario para crear y editar oportunidades
-- [ ] Registro y consulta de organizaciones y contactos
-- [ ] Seguimientos con historial y registro de nuevas gestiones
-- [ ] Panel de supervisor con asignación de responsables
-- [ ] Cambio de estado respetando permisos y transiciones
-- [ ] Alertas: eventos próximos, seguimientos pendientes y gestiones atrasadas
-- [ ] Cámara para fotografiar eventos, con vista previa y asociación a la oportunidad
-- [ ] Integración con el calendario del dispositivo
+- [x] Inicio y cierre de sesión con cuentas locales
+- [x] Dashboard según el rol
+- [x] Listado de oportunidades con búsqueda y filtros por estado y prioridad
+- [x] Detalle de oportunidad
+- [x] Formulario para crear y editar oportunidades
+- [x] Registro y consulta de organizaciones y contactos
+- [x] Seguimientos con historial y registro de nuevas gestiones
+- [x] Panel de supervisor con asignación de responsables
+- [x] Cambio de estado respetando permisos y transiciones
+- [x] Alertas: eventos próximos, seguimientos pendientes y gestiones atrasadas
+- [x] Cámara para fotografiar eventos, con vista previa y asociación a la oportunidad
+- [x] Integración con el calendario del dispositivo
 - [ ] Tema Material 3 centralizado, colores semánticos y animaciones
 
 ## Arquitectura

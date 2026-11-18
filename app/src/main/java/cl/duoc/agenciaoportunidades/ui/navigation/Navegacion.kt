@@ -23,6 +23,7 @@ import cl.duoc.agenciaoportunidades.ui.perfil.PerfilScreen
 import cl.duoc.agenciaoportunidades.ui.seguimiento.FormularioSeguimientoScreen
 import cl.duoc.agenciaoportunidades.ui.sesion.SesionViewModel
 import cl.duoc.agenciaoportunidades.util.esSupervisor
+import cl.duoc.agenciaoportunidades.ui.directorio.DirectorioScreen
 
 object Rutas {
     const val LOGIN = "login"
@@ -39,6 +40,8 @@ object Rutas {
     const val FORMULARIO_ORGANIZACION = "formularioOrganizacion"
     const val FORMULARIO_ORGANIZACION_PATRON = "formularioOrganizacion?organizacionId={organizacionId}"
     const val FORMULARIO_CONTACTO = "formularioContacto"
+
+    const val DIRECTORIO = "directorio"
     const val FORMULARIO_CONTACTO_PATRON = "formularioContacto/{organizacionId}?contactoId={contactoId}"
 
     fun detalle(oportunidadId: Int): String = "$DETALLE/$oportunidadId"
@@ -125,8 +128,12 @@ fun Navegacion(sesionViewModel: SesionViewModel = viewModel()) {
             OrganizacionesScreen(
                 onAbrirOrganizacion = { id -> navController.navigate(Rutas.organizacion(id)) },
                 onNuevaOrganizacion = { navController.navigate(Rutas.formularioOrganizacion()) },
+                onAbrirDirectorio = { navController.navigate(Rutas.DIRECTORIO) },
                 bottomBar = { BarraInferior(Rutas.ORGANIZACIONES, irAPestana, supervisor) }
             )
+        }
+        composable(Rutas.DIRECTORIO) {
+            DirectorioScreen(onVolver = { navController.popBackStack() })
         }
         composable(Rutas.EQUIPO) {
             val actual = usuario

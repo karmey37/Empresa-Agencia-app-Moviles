@@ -38,12 +38,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cl.duoc.agenciaoportunidades.model.OrganizacionResumen
 import cl.duoc.agenciaoportunidades.util.etiqueta
+import androidx.compose.material.icons.filled.Cloud
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrganizacionesScreen(
     onAbrirOrganizacion: (Int) -> Unit,
     onNuevaOrganizacion: () -> Unit,
+    onAbrirDirectorio: () -> Unit,
     bottomBar: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: OrganizacionesViewModel = viewModel()
@@ -53,7 +55,16 @@ fun OrganizacionesScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("Organizaciones") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Organizaciones") },
+                actions = {
+                    IconButton(onClick = onAbrirDirectorio) {
+                        Icon(Icons.Filled.Cloud, contentDescription = "Directorio en servidor")
+                    }
+                }
+            )
+        },
         bottomBar = bottomBar,
         floatingActionButton = {
             FloatingActionButton(onClick = onNuevaOrganizacion) {

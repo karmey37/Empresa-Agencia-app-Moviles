@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -62,4 +63,28 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.coil.compose)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockwebserver)
+}
+
+kover {
+    reports {
+        verify {
+            rule("Cobertura mínima de la lógica") {
+                minBound(80)
+            }
+        }
+        filters {
+            includes {
+                classes(
+                    "cl.duoc.agenciaoportunidades.util.ValidacionesKt*",
+                    "cl.duoc.agenciaoportunidades.util.ReglasNegocioKt*",
+                    "cl.duoc.agenciaoportunidades.util.AlertasKt*",
+                    "cl.duoc.agenciaoportunidades.data.remote.OrganizacionesRemoteRepository*",
+                    "cl.duoc.agenciaoportunidades.ui.directorio.DirectorioViewModel*",
+                    "cl.duoc.agenciaoportunidades.ui.directorio.DirectorioValidador*"
+                )
+            }
+        }
+    }
 }

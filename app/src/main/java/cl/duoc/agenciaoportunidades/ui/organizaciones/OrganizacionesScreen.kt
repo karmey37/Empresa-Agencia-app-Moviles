@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import cl.duoc.agenciaoportunidades.model.OrganizacionResumen
 import cl.duoc.agenciaoportunidades.util.etiqueta
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Event
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +47,7 @@ fun OrganizacionesScreen(
     onAbrirOrganizacion: (Int) -> Unit,
     onNuevaOrganizacion: () -> Unit,
     onAbrirDirectorio: () -> Unit,
+    onAbrirFeriados: () -> Unit,
     bottomBar: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: OrganizacionesViewModel = viewModel()
@@ -59,6 +61,9 @@ fun OrganizacionesScreen(
             TopAppBar(
                 title = { Text("Organizaciones") },
                 actions = {
+                    IconButton(onClick = onAbrirFeriados) {
+                        Icon(Icons.Filled.Event, contentDescription = "Feriados de Chile")
+                    }
                     IconButton(onClick = onAbrirDirectorio) {
                         Icon(Icons.Filled.Cloud, contentDescription = "Directorio en servidor")
                     }

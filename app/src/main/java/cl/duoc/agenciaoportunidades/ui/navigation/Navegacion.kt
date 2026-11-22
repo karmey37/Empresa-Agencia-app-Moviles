@@ -24,6 +24,7 @@ import cl.duoc.agenciaoportunidades.ui.seguimiento.FormularioSeguimientoScreen
 import cl.duoc.agenciaoportunidades.ui.sesion.SesionViewModel
 import cl.duoc.agenciaoportunidades.util.esSupervisor
 import cl.duoc.agenciaoportunidades.ui.directorio.DirectorioScreen
+import cl.duoc.agenciaoportunidades.ui.feriados.FeriadosScreen
 
 object Rutas {
     const val LOGIN = "login"
@@ -42,6 +43,7 @@ object Rutas {
     const val FORMULARIO_CONTACTO = "formularioContacto"
 
     const val DIRECTORIO = "directorio"
+    const val FERIADOS = "feriados"
     const val FORMULARIO_CONTACTO_PATRON = "formularioContacto/{organizacionId}?contactoId={contactoId}"
 
     fun detalle(oportunidadId: Int): String = "$DETALLE/$oportunidadId"
@@ -129,11 +131,15 @@ fun Navegacion(sesionViewModel: SesionViewModel = viewModel()) {
                 onAbrirOrganizacion = { id -> navController.navigate(Rutas.organizacion(id)) },
                 onNuevaOrganizacion = { navController.navigate(Rutas.formularioOrganizacion()) },
                 onAbrirDirectorio = { navController.navigate(Rutas.DIRECTORIO) },
+                onAbrirFeriados = { navController.navigate(Rutas.FERIADOS) },
                 bottomBar = { BarraInferior(Rutas.ORGANIZACIONES, irAPestana, supervisor) }
             )
         }
         composable(Rutas.DIRECTORIO) {
             DirectorioScreen(onVolver = { navController.popBackStack() })
+        }
+        composable(Rutas.FERIADOS) {
+            FeriadosScreen(onVolver = { navController.popBackStack() })
         }
         composable(Rutas.EQUIPO) {
             val actual = usuario

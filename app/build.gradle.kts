@@ -1,8 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kover)
+}
+
+// Datos de la firma: se leen de keystore.properties (en la raíz del proyecto)
+val keystoreProps = Properties().apply {
+    val archivo = rootProject.file("keystore.properties")
+    if (archivo.exists()) archivo.inputStream().use { load(it) }
 }
 
 android {
@@ -15,16 +23,31 @@ android {
         applicationId = "cl.duoc.agenciaoportunidades"
         minSdk = 24
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2          // sube 1 en cada entrega
+        versionName = "1.1.0"    // versión que ve el usuario
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (keystoreProps.isNotEmpty()) {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
             optimization {
                 enable = false
+            }
+            // Solo firma si existe keystore.properties; si no, assembleRelease genera un APK sin firmar
+            if (keystoreProps.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
             }
         }
     }
@@ -82,7 +105,10 @@ kover {
                     "cl.duoc.agenciaoportunidades.util.AlertasKt*",
                     "cl.duoc.agenciaoportunidades.data.remote.OrganizacionesRemoteRepository*",
                     "cl.duoc.agenciaoportunidades.ui.directorio.DirectorioViewModel*",
-                    "cl.duoc.agenciaoportunidades.ui.directorio.DirectorioValidador*"
+                    "cl.duoc.agenciaoportunidades.ui.directorio.DirectorioValidador*",
+                    "cl.duoc.agenciaoportunidades.data.externa.FeriadosRepository*",
+                    "cl.duoc.agenciaoportunidades.ui.feriados.FeriadosViewModel*",
+                    "cl.duoc.agenciaoportunidades.ui.feriados.FeriadosLogicaKt*"
                 )
             }
         }
